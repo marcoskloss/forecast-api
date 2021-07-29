@@ -5,6 +5,7 @@ describe('Users functional tests', () => {
   beforeEach(async () => {
     await User.deleteMany({});
   });
+
   describe('When creating a new user', () => {
     it('should successfully create a new user with encrypted password', async () => {
       const newUser = {
@@ -115,7 +116,7 @@ describe('Users functional tests', () => {
       const user = await new User(newUser).save();
       const token = AuthService.generateToken(user.toJSON());
       const { body, status } = await global.testRequest
-        .get('users/me')
+        .get('/users/me')
         .set({ 'x-access-token': token });
 
       expect(status).toBe(200);
@@ -134,7 +135,7 @@ describe('Users functional tests', () => {
 
     const token = AuthService.generateToken(user.toJSON());
     const { body, status } = await global.testRequest
-      .get('users/me')
+      .get('/users/me')
       .set({ 'x-access-token': token });
 
     expect(status).toBe(404);
