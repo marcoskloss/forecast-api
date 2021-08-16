@@ -4,7 +4,9 @@ import { Beach } from '@src/models/beach';
 import { Rating } from '@src/services/rating';
 import { InternalError } from '@src/util/errors/internal-error';
 
-export interface BeachForecast extends Omit<Beach, 'user'>, ForecastPoint {}
+export interface BeachForecast extends Omit<Beach, 'user'>, ForecastPoint {
+  rating: number;
+}
 
 export interface TimeForecast {
   time: string;
@@ -27,24 +29,33 @@ export class Forecast {
   public async processForecastForBeaches(
     beaches: Beach[]
   ): Promise<TimeForecast[]> {
-    const pointsWithCorrectSources: BeachForecast[] = [];
-    logger.info(`Preparing the forecast for ${beaches.length} beaches`);
     try {
-      for (const beach of beaches) {
-        const rating = new this.RatingService(beach);
-        const points = await this.stormGlass.fetchPoints(beach.lat, beach.lng);
-        const enrichedBeachData = this.enrichedBeachData(
-          points, 
-          beach,
-          rating
-        );
-        pointsWithCorrectSources.push(...enrichedBeachData);
-      }
-      return this.mapForecastByTime(pointsWithCorrectSources);
+      const beachForecast = await this.calculateRating(beaches);
+      const timesForecast = this.mapForecastByTime(beachForecast);
+      return timesForecast.map(timeForecast => ({
+        time: timeForecast.time,
+        forecast: [...timeForecast.forecast.sort((a, b) => b.rating - a.rating)]
+      }))
     } catch (err) {
       logger.error(err);
       throw new ForecastInternalProcessingError(err.message);
     }
+  }
+ 
+  private async calculateRating(beaches: Beach[]): Promise<BeachForecast[]> {
+    const pointsWithCorrectSources: BeachForecast[] = [];
+    logger.info(`Preparing the forecast for ${beaches.length} beaches`);
+    for (const beach of beaches) {
+      const rating = new this.RatingService(beach);
+      const points = await this.stormGlass.fetchPoints(beach.lat, beach.lng);
+      const enrichedBeachData = this.enrichedBeachData(
+        points, 
+        beach,
+        rating
+      );
+      pointsWithCorrectSources.push(...enrichedBeachData);
+    }
+    return pointsWithCorrectSources;
   }
 
   private enrichedBeachData(
