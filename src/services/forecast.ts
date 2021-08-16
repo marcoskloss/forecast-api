@@ -45,12 +45,16 @@ export class Forecast {
   private async calculateRating(beaches: Beach[]): Promise<BeachForecast[]> {
     const pointsWithCorrectSources: BeachForecast[] = [];
     logger.info(`Preparing the forecast for ${beaches.length} beaches`);
-    for (const beach of beaches) {
-      const rating = new this.RatingService(beach);
-      const points = await this.stormGlass.fetchPoints(beach.lat, beach.lng);
+
+    const points = await Promise.all(
+      beaches.map(beach => this.stormGlass.fetchPoints(beach.lat, beach.lng))
+    )
+
+    for (let i = 0; i < beaches.length; i++) {
+      const rating = new this.RatingService(beaches[i]);
       const enrichedBeachData = this.enrichedBeachData(
-        points, 
-        beach,
+        points[i], 
+        beaches[i],
         rating
       );
       pointsWithCorrectSources.push(...enrichedBeachData);
